@@ -1233,6 +1233,187 @@
                 mesh.position.z = orig.z + offset.z * explosionFactor * 2;
             });
         }
+
+        // EPIC THEME MUSIC - ULTIMATE CHARCOAL MAXIMIZER ANTHEM!
+        let audioContext;
+        let musicPlaying = false;
+
+        function playNote(freq, startTime, duration, type = 'sine', volume = 0.1, masterGain) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = type;
+            osc.frequency.value = freq;
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        function playEpicTheme() {
+            if (musicPlaying) return;
+
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                musicPlaying = true;
+
+                const masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.25;
+                masterGain.connect(audioContext.destination);
+
+                let time = audioContext.currentTime;
+                const bpm = 140;
+                const beat = 60 / bpm;
+
+                // Catchy melody like an 80s game show theme
+                // Pattern: "DA-DA-DA-DUM, DA-DA-DA-DAAA" (think Price is Right energy)
+                const melody = [
+                    // Bar 1: Ascending hook
+                    { note: 523.25, time: 0, dur: beat * 0.4 },      // C5
+                    { note: 587.33, time: beat * 0.5, dur: beat * 0.4 },  // D5
+                    { note: 659.25, time: beat * 1, dur: beat * 0.4 },    // E5
+                    { note: 783.99, time: beat * 1.5, dur: beat * 1.4 },  // G5 (hold)
+
+                    // Bar 2: Response
+                    { note: 659.25, time: beat * 3, dur: beat * 0.4 },    // E5
+                    { note: 587.33, time: beat * 3.5, dur: beat * 0.4 },  // D5
+                    { note: 523.25, time: beat * 4, dur: beat * 0.4 },    // C5
+                    { note: 659.25, time: beat * 4.5, dur: beat * 1.4 },  // E5 (hold)
+
+                    // Bar 3: Build up
+                    { note: 698.46, time: beat * 6, dur: beat * 0.4 },    // F5
+                    { note: 783.99, time: beat * 6.5, dur: beat * 0.4 },  // G5
+                    { note: 880.00, time: beat * 7, dur: beat * 0.4 },    // A5
+                    { note: 1046.50, time: beat * 7.5, dur: beat * 1.4 }, // C6 (climax!)
+
+                    // Bar 4: Triumphant ending
+                    { note: 783.99, time: beat * 9, dur: beat * 0.4 },    // G5
+                    { note: 659.25, time: beat * 9.5, dur: beat * 0.4 },  // E5
+                    { note: 523.25, time: beat * 10, dur: beat * 1.8 },   // C5 (long!)
+                ];
+
+                // Bass line (four-on-the-floor with variation)
+                const bassPattern = [
+                    // Bar 1-2: C root
+                    { note: 130.81, time: 0, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 1, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 2, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 3, dur: beat * 0.8 },
+                    // Bar 3: F
+                    { note: 174.61, time: beat * 4, dur: beat * 0.8 },
+                    { note: 174.61, time: beat * 5, dur: beat * 0.8 },
+                    // Bar 4: G
+                    { note: 196.00, time: beat * 6, dur: beat * 0.8 },
+                    { note: 196.00, time: beat * 7, dur: beat * 0.8 },
+                    // Bar 5-6: Back to C
+                    { note: 130.81, time: beat * 8, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 9, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 10, dur: beat * 0.8 },
+                    { note: 130.81, time: beat * 11, dur: beat * 0.8 },
+                ];
+
+                // Harmony chords (bright and uplifting)
+                const chords = [
+                    // C major
+                    { notes: [261.63, 329.63, 392.00], time: 0, dur: beat * 4 },
+                    // F major
+                    { notes: [174.61, 220.00, 261.63], time: beat * 4, dur: beat * 2 },
+                    // G major
+                    { notes: [196.00, 246.94, 293.66], time: beat * 6, dur: beat * 2 },
+                    // C major (resolution)
+                    { notes: [261.63, 329.63, 392.00], time: beat * 8, dur: beat * 4 },
+                ];
+
+                // Play melody (lead synth - bright!)
+                melody.forEach(m => {
+                    playNote(m.note, time + m.time, m.dur, 'square', 0.15, masterGain);
+                    // Add slight vibrato/chorus effect
+                    playNote(m.note * 1.01, time + m.time, m.dur, 'square', 0.08, masterGain);
+                });
+
+                // Play bass (warm and punchy)
+                bassPattern.forEach(b => {
+                    playNote(b.note, time + b.time, b.dur, 'triangle', 0.3, masterGain);
+                });
+
+                // Play chords (pad sound)
+                chords.forEach(c => {
+                    c.notes.forEach(note => {
+                        playNote(note, time + c.time, c.dur, 'sawtooth', 0.08, masterGain);
+                    });
+                });
+
+                // Add rhythmic synth stabs on beats 2 and 4
+                for (let i = 1; i < 12; i += 2) {
+                    playNote(1046.50, time + i * beat, beat * 0.1, 'square', 0.12, masterGain);
+                }
+
+                // Kick drum on every beat
+                for (let i = 0; i < 12; i++) {
+                    const kick = audioContext.createOscillator();
+                    const kickGain = audioContext.createGain();
+
+                    kick.frequency.setValueAtTime(150, time + i * beat);
+                    kick.frequency.exponentialRampToValueAtTime(0.01, time + i * beat + 0.15);
+
+                    kickGain.gain.setValueAtTime(0.4, time + i * beat);
+                    kickGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat + 0.15);
+
+                    kick.connect(kickGain);
+                    kickGain.connect(masterGain);
+
+                    kick.start(time + i * beat);
+                    kick.stop(time + i * beat + 0.15);
+                }
+
+                // Hi-hats (16th notes for energy)
+                for (let i = 0; i < 48; i++) {
+                    const hihat = audioContext.createOscillator();
+                    const hihatGain = audioContext.createGain();
+
+                    hihat.type = 'square';
+                    hihat.frequency.value = 8000 + Math.random() * 2000;
+
+                    const vol = (i % 4 === 0) ? 0.04 : 0.02; // Accent every 4th
+                    hihatGain.gain.setValueAtTime(vol, time + i * beat * 0.25);
+                    hihatGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat * 0.25 + 0.05);
+
+                    hihat.connect(hihatGain);
+                    hihatGain.connect(masterGain);
+
+                    hihat.start(time + i * beat * 0.25);
+                    hihat.stop(time + i * beat * 0.25 + 0.05);
+                }
+
+                // Loop seamlessly
+                const totalDuration = beat * 12;
+                setTimeout(() => {
+                    musicPlaying = false;
+                    playEpicTheme();
+                }, (totalDuration * 1000) - 50);
+
+            } catch (e) {
+                console.log('Audio not available:', e);
+            }
+        }
+
+        // Auto-play on load
+        window.addEventListener('load', () => {
+            playEpicTheme();
+        });
+
+        // Fallback on first click
+        document.addEventListener('click', () => {
+            if (!musicPlaying) {
+                playEpicTheme();
+            }
+        }, { once: true });
     </script>
 </body>
 </html>
