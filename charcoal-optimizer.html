@@ -420,9 +420,84 @@
         .badge:nth-child(4) {
             animation-delay: 0.9s;
         }
+
+        .music-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .music-toggle {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border: 3px solid #ff6b6b;
+            border-radius: 50px;
+            padding: 12px 24px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .music-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.8);
+        }
+
+        .music-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .music-toggle.muted {
+            background: linear-gradient(135deg, #999 0%, #666 100%);
+            border-color: #333;
+        }
+
+        .music-icon {
+            font-size: 20px;
+        }
+
+        .music-selector {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid #ffd700;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .music-selector:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
+    <div class="music-controls">
+        <select class="music-selector" id="musicSelector" onchange="changeSong()">
+            <option value="happy">🎉 Happy Song</option>
+            <option value="sad">😢 Sad Song</option>
+            <option value="metal">🤘 Thrash Metal</option>
+            <option value="synthwave">🌆 Synthwave</option>
+        </select>
+        <button class="music-toggle" id="musicToggle" onclick="toggleMusic()">
+            <span class="music-icon">🔊</span>
+            <span id="musicStatus">Music ON</span>
+        </button>
+    </div>
+
     <div class="container">
         <div class="hero-header">
             <h1 class="hero-title">ULTIMATE CHARCOAL PACKING MAXIMIZER 3000!</h1>
@@ -1047,7 +1122,12 @@
 
             // Setup scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
+
+            // Create factory background with gradient sky
+            const skyColor = new THREE.Color(0x87CEEB);
+            const groundColor = new THREE.Color(0x3a3a3a);
+            scene.background = skyColor;
+            scene.fog = new THREE.Fog(skyColor, 2000, 5000);
 
             // Setup camera
             const containerWidth = container.clientWidth;
@@ -1061,9 +1141,11 @@
             camera.position.set(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5);
             camera.lookAt(0, 0, 0);
 
-            // Setup renderer
+            // Setup renderer with shadows
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(containerWidth, containerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
             // Setup orbit controls for mouse interaction
@@ -1073,19 +1155,62 @@
             controls.screenSpacePanning = false;
             controls.minDistance = maxDim * 0.5;
             controls.maxDistance = maxDim * 3;
-            controls.maxPolarAngle = Math.PI;
+            controls.maxPolarAngle = Math.PI / 1.8;
 
-            // Add lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            // Add realistic lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambientLight);
 
-            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.5);
-            directionalLight1.position.set(100, 100, 100);
-            scene.add(directionalLight1);
+            const sunLight = new THREE.DirectionalLight(0xffffee, 0.8);
+            sunLight.position.set(maxDim * 2, maxDim * 3, maxDim * 2);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.far = maxDim * 10;
+            scene.add(sunLight);
 
-            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
-            directionalLight2.position.set(-100, 50, -100);
-            scene.add(directionalLight2);
+            const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+            fillLight.position.set(-maxDim, maxDim * 0.5, -maxDim);
+            scene.add(fillLight);
+
+            // Add ground plane (factory floor)
+            const groundGeometry = new THREE.PlaneGeometry(maxDim * 6, maxDim * 6);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -containerDims[1] / 2 - 5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Add factory building silhouettes in background
+            const buildingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.9
+            });
+
+            // Large warehouse building
+            const warehouse = new THREE.Mesh(
+                new THREE.BoxGeometry(maxDim * 3, maxDim * 2, maxDim),
+                buildingMaterial
+            );
+            warehouse.position.set(0, maxDim * 0.5, -maxDim * 4);
+            warehouse.receiveShadow = true;
+            warehouse.castShadow = true;
+            scene.add(warehouse);
+
+            // Smokestack
+            const smokestack = new THREE.Mesh(
+                new THREE.CylinderGeometry(maxDim * 0.15, maxDim * 0.2, maxDim * 2, 8),
+                buildingMaterial
+            );
+            smokestack.position.set(maxDim * 1.5, maxDim * 1, -maxDim * 4);
+            smokestack.receiveShadow = true;
+            smokestack.castShadow = true;
+            scene.add(smokestack);
 
             // Create container outline (wireframe)
             const containerDims = config.palletRotated ?
@@ -1101,6 +1226,68 @@
             const centerX = 0;
             const centerY = 0;
             const centerZ = 0;
+
+            // Create procedural texture for charcoal bags (burlap/woven material)
+            const bagTextureCanvas = document.createElement('canvas');
+            bagTextureCanvas.width = 256;
+            bagTextureCanvas.height = 256;
+            const bagCtx = bagTextureCanvas.getContext('2d');
+
+            // Base burlap color
+            bagCtx.fillStyle = '#8B7355';
+            bagCtx.fillRect(0, 0, 256, 256);
+
+            // Add woven texture pattern
+            for (let i = 0; i < 256; i += 4) {
+                bagCtx.strokeStyle = `rgba(139, 115, 85, ${0.3 + Math.random() * 0.3})`;
+                bagCtx.lineWidth = 2;
+                bagCtx.beginPath();
+                bagCtx.moveTo(i, 0);
+                bagCtx.lineTo(i, 256);
+                bagCtx.stroke();
+
+                bagCtx.beginPath();
+                bagCtx.moveTo(0, i);
+                bagCtx.lineTo(256, i);
+                bagCtx.stroke();
+            }
+
+            // Add random spots for realistic dirt/wear
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const size = Math.random() * 3 + 1;
+                bagCtx.fillStyle = `rgba(50, 40, 30, ${Math.random() * 0.3})`;
+                bagCtx.fillRect(x, y, size, size);
+            }
+
+            const bagTexture = new THREE.CanvasTexture(bagTextureCanvas);
+            bagTexture.wrapS = THREE.RepeatWrapping;
+            bagTexture.wrapT = THREE.RepeatWrapping;
+
+            // Create wood texture for pallets
+            const woodTextureCanvas = document.createElement('canvas');
+            woodTextureCanvas.width = 256;
+            woodTextureCanvas.height = 256;
+            const woodCtx = woodTextureCanvas.getContext('2d');
+
+            // Base wood color
+            woodCtx.fillStyle = '#8B6914';
+            woodCtx.fillRect(0, 0, 256, 256);
+
+            // Wood grain lines
+            for (let i = 0; i < 256; i += 8) {
+                woodCtx.strokeStyle = `rgba(101, 67, 33, ${0.2 + Math.random() * 0.3})`;
+                woodCtx.lineWidth = 1 + Math.random() * 2;
+                woodCtx.beginPath();
+                woodCtx.moveTo(0, i + Math.random() * 4 - 2);
+                woodCtx.lineTo(256, i + Math.random() * 4 - 2);
+                woodCtx.stroke();
+            }
+
+            const woodTexture = new THREE.CanvasTexture(woodTextureCanvas);
+            woodTexture.wrapS = THREE.RepeatWrapping;
+            woodTexture.wrapT = THREE.RepeatWrapping;
 
             // Create bags
             const bagL = config.bagDims.l;
@@ -1124,6 +1311,51 @@
                         const palletX = startX + px * actualPalletL + actualPalletL / 2;
                         const palletY = startY + pz * palletH;
                         const palletZ = startZ + py * actualPalletW + actualPalletW / 2;
+
+                        // Create visible pallet base
+                        const palletThickness = 10; // 10cm thick pallet
+                        const palletGeometry = new THREE.BoxGeometry(actualPalletL, palletThickness, actualPalletW);
+                        const palletMaterial = new THREE.MeshStandardMaterial({
+                            map: woodTexture,
+                            roughness: 0.9,
+                            metalness: 0.1,
+                            color: 0xaa8844
+                        });
+                        const palletMesh = new THREE.Mesh(palletGeometry, palletMaterial);
+                        palletMesh.position.set(palletX, palletY - palletThickness / 2, palletZ);
+                        palletMesh.castShadow = true;
+                        palletMesh.receiveShadow = true;
+                        scene.add(palletMesh);
+
+                        // Add pallet outline for clarity
+                        const palletEdges = new THREE.EdgesGeometry(palletGeometry);
+                        const palletOutline = new THREE.LineSegments(palletEdges,
+                            new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 3 }));
+                        palletMesh.add(palletOutline);
+
+                        // Add "PALLET" label on top for clarity
+                        const labelCanvas = document.createElement('canvas');
+                        labelCanvas.width = 256;
+                        labelCanvas.height = 128;
+                        const labelCtx = labelCanvas.getContext('2d');
+                        labelCtx.fillStyle = '#000000';
+                        labelCtx.fillRect(0, 0, 256, 128);
+                        labelCtx.fillStyle = '#FFFF00';
+                        labelCtx.font = 'bold 48px Arial';
+                        labelCtx.textAlign = 'center';
+                        labelCtx.fillText('PALLET', 128, 70);
+
+                        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                        const labelMaterial = new THREE.MeshBasicMaterial({
+                            map: labelTexture,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const labelGeometry = new THREE.PlaneGeometry(actualPalletL * 0.6, actualPalletL * 0.3);
+                        const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+                        labelMesh.rotation.x = -Math.PI / 2;
+                        labelMesh.position.set(palletX, palletY + 1, palletZ);
+                        scene.add(labelMesh);
 
                         // Iterate through bag layers on this pallet
                         for (let layer = 0; layer < config.bagLayout.totalLayers; layer++) {
@@ -1154,18 +1386,21 @@
                                     // Create bag mesh
                                     const geometry = new THREE.BoxGeometry(currentBagL, bagH, currentBagW);
 
-                                    // Alternate colors for different orientations
-                                    const hue = isOrientation1 ? 0.6 : 0.4;
-                                    const color = new THREE.Color().setHSL(hue, 0.7, 0.5);
+                                    // Use textured material with slight color variation for different orientations
+                                    const hue = isOrientation1 ? 0.1 : 0.08;
+                                    const tintColor = new THREE.Color().setHSL(hue, 0.3, 0.45);
 
-                                    const material = new THREE.MeshPhongMaterial({
-                                        color: color,
-                                        shininess: 30,
-                                        transparent: true,
-                                        opacity: 0.9
+                                    const material = new THREE.MeshStandardMaterial({
+                                        map: bagTexture,
+                                        color: tintColor,
+                                        roughness: 0.95,
+                                        metalness: 0.0,
+                                        transparent: false
                                     });
 
                                     const mesh = new THREE.Mesh(geometry, material);
+                                    mesh.castShadow = true;
+                                    mesh.receiveShadow = true;
 
                                     // Store original position for explosion
                                     mesh.userData.originalPos = { x: bagX, y: bagY, z: bagZ };
@@ -1234,35 +1469,85 @@
             });
         }
 
-        // EPIC THEME MUSIC - ULTIMATE CHARCOAL MAXIMIZER ANTHEM!
+        // MUSIC SYSTEM WITH 4 SONGS!
         let audioContext;
         let musicPlaying = false;
+        let musicEnabled = true;
+        let musicLoopTimeout = null;
+        let currentSong = 'happy';
 
         function playNote(freq, startTime, duration, type = 'sine', volume = 0.1, masterGain) {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
-
             osc.type = type;
             osc.frequency.value = freq;
-
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
             osc.connect(gain);
             gain.connect(masterGain);
-
             osc.start(startTime);
             osc.stop(startTime + duration);
         }
 
-        function playEpicTheme() {
-            if (musicPlaying) return;
+        function toggleMusic() {
+            musicEnabled = !musicEnabled;
+            const btn = document.getElementById('musicToggle');
+            const icon = btn.querySelector('.music-icon');
+            const status = document.getElementById('musicStatus');
 
+            if (musicEnabled) {
+                btn.classList.remove('muted');
+                icon.textContent = '🔊';
+                status.textContent = 'Music ON';
+                if (!musicPlaying) {
+                    playCurrentSong();
+                }
+            } else {
+                btn.classList.add('muted');
+                icon.textContent = '🔇';
+                status.textContent = 'Music OFF';
+                stopMusic();
+            }
+        }
+
+        function changeSong() {
+            currentSong = document.getElementById('musicSelector').value;
+            if (musicEnabled) {
+                stopMusic();
+                setTimeout(() => playCurrentSong(), 100);
+            }
+        }
+
+        function stopMusic() {
+            if (musicLoopTimeout) {
+                clearTimeout(musicLoopTimeout);
+                musicLoopTimeout = null;
+            }
+            musicPlaying = false;
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+        }
+
+        function playCurrentSong() {
+            if (!musicEnabled || musicPlaying) return;
+
+            switch(currentSong) {
+                case 'happy': playHappySong(); break;
+                case 'sad': playSadSong(); break;
+                case 'metal': playMetalSong(); break;
+                case 'synthwave': playSynthwave(); break;
+            }
+        }
+
+        // 1. HAPPY SONG - Upbeat and cheerful!
+        function playHappySong() {
+            if (musicPlaying) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 musicPlaying = true;
-
                 const masterGain = audioContext.createGain();
                 masterGain.gain.value = 0.25;
                 masterGain.connect(audioContext.destination);
@@ -1271,147 +1556,210 @@
                 const bpm = 140;
                 const beat = 60 / bpm;
 
-                // Catchy melody like an 80s game show theme
-                // Pattern: "DA-DA-DA-DUM, DA-DA-DA-DAAA" (think Price is Right energy)
                 const melody = [
-                    // Bar 1: Ascending hook
-                    { note: 523.25, time: 0, dur: beat * 0.4 },      // C5
-                    { note: 587.33, time: beat * 0.5, dur: beat * 0.4 },  // D5
-                    { note: 659.25, time: beat * 1, dur: beat * 0.4 },    // E5
-                    { note: 783.99, time: beat * 1.5, dur: beat * 1.4 },  // G5 (hold)
-
-                    // Bar 2: Response
-                    { note: 659.25, time: beat * 3, dur: beat * 0.4 },    // E5
-                    { note: 587.33, time: beat * 3.5, dur: beat * 0.4 },  // D5
-                    { note: 523.25, time: beat * 4, dur: beat * 0.4 },    // C5
-                    { note: 659.25, time: beat * 4.5, dur: beat * 1.4 },  // E5 (hold)
-
-                    // Bar 3: Build up
-                    { note: 698.46, time: beat * 6, dur: beat * 0.4 },    // F5
-                    { note: 783.99, time: beat * 6.5, dur: beat * 0.4 },  // G5
-                    { note: 880.00, time: beat * 7, dur: beat * 0.4 },    // A5
-                    { note: 1046.50, time: beat * 7.5, dur: beat * 1.4 }, // C6 (climax!)
-
-                    // Bar 4: Triumphant ending
-                    { note: 783.99, time: beat * 9, dur: beat * 0.4 },    // G5
-                    { note: 659.25, time: beat * 9.5, dur: beat * 0.4 },  // E5
-                    { note: 523.25, time: beat * 10, dur: beat * 1.8 },   // C5 (long!)
+                    {note: 523.25, time: 0, dur: beat*0.4}, {note: 587.33, time: beat*0.5, dur: beat*0.4},
+                    {note: 659.25, time: beat*1, dur: beat*0.4}, {note: 783.99, time: beat*1.5, dur: beat*1.4},
+                    {note: 659.25, time: beat*3, dur: beat*0.4}, {note: 587.33, time: beat*3.5, dur: beat*0.4},
+                    {note: 523.25, time: beat*4, dur: beat*0.4}, {note: 659.25, time: beat*4.5, dur: beat*1.4},
+                    {note: 698.46, time: beat*6, dur: beat*0.4}, {note: 783.99, time: beat*6.5, dur: beat*0.4},
+                    {note: 880.00, time: beat*7, dur: beat*0.4}, {note: 1046.50, time: beat*7.5, dur: beat*1.4},
+                    {note: 783.99, time: beat*9, dur: beat*0.4}, {note: 659.25, time: beat*9.5, dur: beat*0.4},
+                    {note: 523.25, time: beat*10, dur: beat*1.8}
                 ];
 
-                // Bass line (four-on-the-floor with variation)
-                const bassPattern = [
-                    // Bar 1-2: C root
-                    { note: 130.81, time: 0, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 1, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 2, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 3, dur: beat * 0.8 },
-                    // Bar 3: F
-                    { note: 174.61, time: beat * 4, dur: beat * 0.8 },
-                    { note: 174.61, time: beat * 5, dur: beat * 0.8 },
-                    // Bar 4: G
-                    { note: 196.00, time: beat * 6, dur: beat * 0.8 },
-                    { note: 196.00, time: beat * 7, dur: beat * 0.8 },
-                    // Bar 5-6: Back to C
-                    { note: 130.81, time: beat * 8, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 9, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 10, dur: beat * 0.8 },
-                    { note: 130.81, time: beat * 11, dur: beat * 0.8 },
-                ];
-
-                // Harmony chords (bright and uplifting)
-                const chords = [
-                    // C major
-                    { notes: [261.63, 329.63, 392.00], time: 0, dur: beat * 4 },
-                    // F major
-                    { notes: [174.61, 220.00, 261.63], time: beat * 4, dur: beat * 2 },
-                    // G major
-                    { notes: [196.00, 246.94, 293.66], time: beat * 6, dur: beat * 2 },
-                    // C major (resolution)
-                    { notes: [261.63, 329.63, 392.00], time: beat * 8, dur: beat * 4 },
-                ];
-
-                // Play melody (lead synth - bright!)
                 melody.forEach(m => {
                     playNote(m.note, time + m.time, m.dur, 'square', 0.15, masterGain);
-                    // Add slight vibrato/chorus effect
                     playNote(m.note * 1.01, time + m.time, m.dur, 'square', 0.08, masterGain);
                 });
 
-                // Play bass (warm and punchy)
-                bassPattern.forEach(b => {
-                    playNote(b.note, time + b.time, b.dur, 'triangle', 0.3, masterGain);
-                });
-
-                // Play chords (pad sound)
-                chords.forEach(c => {
-                    c.notes.forEach(note => {
-                        playNote(note, time + c.time, c.dur, 'sawtooth', 0.08, masterGain);
-                    });
-                });
-
-                // Add rhythmic synth stabs on beats 2 and 4
-                for (let i = 1; i < 12; i += 2) {
-                    playNote(1046.50, time + i * beat, beat * 0.1, 'square', 0.12, masterGain);
+                for (let i = 0; i < 12; i++) {
+                    playNote(130.81, time + i * beat, beat * 0.8, 'triangle', 0.3, masterGain);
                 }
 
-                // Kick drum on every beat
                 for (let i = 0; i < 12; i++) {
                     const kick = audioContext.createOscillator();
                     const kickGain = audioContext.createGain();
-
                     kick.frequency.setValueAtTime(150, time + i * beat);
                     kick.frequency.exponentialRampToValueAtTime(0.01, time + i * beat + 0.15);
-
                     kickGain.gain.setValueAtTime(0.4, time + i * beat);
                     kickGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat + 0.15);
-
                     kick.connect(kickGain);
                     kickGain.connect(masterGain);
-
                     kick.start(time + i * beat);
                     kick.stop(time + i * beat + 0.15);
                 }
 
-                // Hi-hats (16th notes for energy)
-                for (let i = 0; i < 48; i++) {
-                    const hihat = audioContext.createOscillator();
-                    const hihatGain = audioContext.createGain();
+                musicLoopTimeout = setTimeout(() => {
+                    musicPlaying = false;
+                    if (musicEnabled) playHappySong();
+                }, (beat * 12 * 1000) - 50);
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
 
-                    hihat.type = 'square';
-                    hihat.frequency.value = 8000 + Math.random() * 2000;
+        // 2. SAD SONG - Slow and melancholic
+        function playSadSong() {
+            if (musicPlaying) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                musicPlaying = true;
+                const masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.2;
+                masterGain.connect(audioContext.destination);
 
-                    const vol = (i % 4 === 0) ? 0.04 : 0.02; // Accent every 4th
-                    hihatGain.gain.setValueAtTime(vol, time + i * beat * 0.25);
-                    hihatGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat * 0.25 + 0.05);
+                let time = audioContext.currentTime;
+                const bpm = 70; // Slow
+                const beat = 60 / bpm;
 
-                    hihat.connect(hihatGain);
-                    hihatGain.connect(masterGain);
+                // Minor key melody (sad)
+                const melody = [
+                    {note: 440.00, time: 0, dur: beat*1.5}, {note: 392.00, time: beat*2, dur: beat*1.5},
+                    {note: 349.23, time: beat*4, dur: beat*2}, {note: 329.63, time: beat*6, dur: beat*1.5},
+                    {note: 293.66, time: beat*8, dur: beat*2}, {note: 261.63, time: beat*10, dur: beat*3}
+                ];
 
-                    hihat.start(time + i * beat * 0.25);
-                    hihat.stop(time + i * beat * 0.25 + 0.05);
+                melody.forEach(m => {
+                    playNote(m.note, time + m.time, m.dur, 'sine', 0.12, masterGain);
+                    playNote(m.note * 0.5, time + m.time, m.dur, 'sine', 0.08, masterGain);
+                });
+
+                // Slow bass
+                for (let i = 0; i < 8; i++) {
+                    playNote(110.00, time + i * beat * 2, beat * 1.8, 'sine', 0.15, masterGain);
                 }
 
-                // Loop seamlessly
-                const totalDuration = beat * 12;
-                setTimeout(() => {
+                musicLoopTimeout = setTimeout(() => {
                     musicPlaying = false;
-                    playEpicTheme();
-                }, (totalDuration * 1000) - 50);
-
+                    if (musicEnabled) playSadSong();
+                }, (beat * 16 * 1000) - 50);
             } catch (e) {
-                console.log('Audio not available:', e);
+                console.log('Audio error:', e);
+            }
+        }
+
+        // 3. THRASH METAL - Fast and aggressive!
+        function playMetalSong() {
+            if (musicPlaying) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                musicPlaying = true;
+                const masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.3;
+                masterGain.connect(audioContext.destination);
+
+                let time = audioContext.currentTime;
+                const bpm = 180; // FAST!
+                const beat = 60 / bpm;
+
+                // Power chord riff (distorted!)
+                const riff = [
+                    {note: 82.41, time: 0, dur: beat*0.5}, {note: 82.41, time: beat*0.5, dur: beat*0.5},
+                    {note: 110.00, time: beat*1, dur: beat*0.5}, {note: 82.41, time: beat*1.5, dur: beat*0.5},
+                    {note: 73.42, time: beat*2, dur: beat*0.5}, {note: 73.42, time: beat*2.5, dur: beat*0.5},
+                    {note: 82.41, time: beat*3, dur: beat*0.5}, {note: 98.00, time: beat*3.5, dur: beat*0.5}
+                ];
+
+                for (let bar = 0; bar < 4; bar++) {
+                    riff.forEach(r => {
+                        const t = time + r.time + bar * beat * 4;
+                        // Heavy distorted guitar (multiple oscillators!)
+                        playNote(r.note, t, r.dur, 'sawtooth', 0.15, masterGain);
+                        playNote(r.note * 2, t, r.dur, 'square', 0.1, masterGain);
+                        playNote(r.note * 1.5, t, r.dur, 'sawtooth', 0.08, masterGain);
+                    });
+                }
+
+                // Double kick drums (FAST!)
+                for (let i = 0; i < 64; i++) {
+                    const kick = audioContext.createOscillator();
+                    const kickGain = audioContext.createGain();
+                    kick.frequency.setValueAtTime(80, time + i * beat * 0.25);
+                    kick.frequency.exponentialRampToValueAtTime(0.01, time + i * beat * 0.25 + 0.1);
+                    kickGain.gain.setValueAtTime(0.5, time + i * beat * 0.25);
+                    kickGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat * 0.25 + 0.1);
+                    kick.connect(kickGain);
+                    kickGain.connect(masterGain);
+                    kick.start(time + i * beat * 0.25);
+                    kick.stop(time + i * beat * 0.25 + 0.1);
+                }
+
+                musicLoopTimeout = setTimeout(() => {
+                    musicPlaying = false;
+                    if (musicEnabled) playMetalSong();
+                }, (beat * 16 * 1000) - 50);
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+
+        // 4. SYNTHWAVE - Retro 80s vibes!
+        function playSynthwave() {
+            if (musicPlaying) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                musicPlaying = true;
+                const masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.25;
+                masterGain.connect(audioContext.destination);
+
+                let time = audioContext.currentTime;
+                const bpm = 120;
+                const beat = 60 / bpm;
+
+                // Retro synth lead
+                const melody = [
+                    {note: 659.25, time: 0, dur: beat*0.5}, {note: 587.33, time: beat*0.5, dur: beat*0.5},
+                    {note: 523.25, time: beat*1, dur: beat*0.5}, {note: 587.33, time: beat*1.5, dur: beat*0.5},
+                    {note: 659.25, time: beat*2, dur: beat*1}, {note: 783.99, time: beat*3, dur: beat*1},
+                    {note: 880.00, time: beat*4, dur: beat*0.5}, {note: 783.99, time: beat*4.5, dur: beat*0.5},
+                    {note: 659.25, time: beat*5, dur: beat*0.5}, {note: 587.33, time: beat*5.5, dur: beat*0.5},
+                    {note: 523.25, time: beat*6, dur: beat*2}
+                ];
+
+                melody.forEach(m => {
+                    playNote(m.note, time + m.time, m.dur, 'sawtooth', 0.12, masterGain);
+                    playNote(m.note * 1.005, time + m.time, m.dur, 'sawtooth', 0.12, masterGain); // Chorus
+                });
+
+                // Arpeggio bassline
+                const arp = [261.63, 329.63, 392.00, 523.25];
+                for (let i = 0; i < 32; i++) {
+                    playNote(arp[i % 4], time + i * beat * 0.25, beat * 0.2, 'triangle', 0.15, masterGain);
+                }
+
+                // Sidechained kick
+                for (let i = 0; i < 8; i++) {
+                    const kick = audioContext.createOscillator();
+                    const kickGain = audioContext.createGain();
+                    kick.frequency.setValueAtTime(120, time + i * beat);
+                    kick.frequency.exponentialRampToValueAtTime(0.01, time + i * beat + 0.2);
+                    kickGain.gain.setValueAtTime(0.45, time + i * beat);
+                    kickGain.gain.exponentialRampToValueAtTime(0.001, time + i * beat + 0.2);
+                    kick.connect(kickGain);
+                    kickGain.connect(masterGain);
+                    kick.start(time + i * beat);
+                    kick.stop(time + i * beat + 0.2);
+                }
+
+                musicLoopTimeout = setTimeout(() => {
+                    musicPlaying = false;
+                    if (musicEnabled) playSynthwave();
+                }, (beat * 8 * 1000) - 50);
+            } catch (e) {
+                console.log('Audio error:', e);
             }
         }
 
         // Auto-play on load
         window.addEventListener('load', () => {
-            playEpicTheme();
+            if (musicEnabled) playCurrentSong();
         });
 
         // Fallback on first click
         document.addEventListener('click', () => {
-            if (!musicPlaying) {
-                playEpicTheme();
+            if (!musicPlaying && musicEnabled) {
+                playCurrentSong();
             }
         }, { once: true });
     </script>
