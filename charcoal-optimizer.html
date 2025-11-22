@@ -1173,6 +1173,11 @@
             fillLight.position.set(-maxDim, maxDim * 0.5, -maxDim);
             scene.add(fillLight);
 
+            // Create container dimensions first (needed for ground positioning)
+            const containerDims = config.palletRotated ?
+                [palletL * config.palletLayout.x, palletH * config.palletLayout.z, palletW * config.palletLayout.y] :
+                [palletL * config.palletLayout.x, palletH * config.palletLayout.z, palletW * config.palletLayout.y];
+
             // Add ground plane (factory floor)
             const groundGeometry = new THREE.PlaneGeometry(maxDim * 6, maxDim * 6);
             const groundMaterial = new THREE.MeshStandardMaterial({
@@ -1213,9 +1218,6 @@
             scene.add(smokestack);
 
             // Create container outline (wireframe)
-            const containerDims = config.palletRotated ?
-                [palletL * config.palletLayout.x, palletH * config.palletLayout.z, palletW * config.palletLayout.y] :
-                [palletL * config.palletLayout.x, palletH * config.palletLayout.z, palletW * config.palletLayout.y];
 
             const containerGeometry = new THREE.BoxGeometry(containerDims[0], containerDims[1], containerDims[2]);
             const containerEdges = new THREE.EdgesGeometry(containerGeometry);
